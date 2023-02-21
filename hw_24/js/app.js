@@ -85,7 +85,13 @@ formEl.onsubmit = (e) => {
     purchase.price
   } ${priceSymbol} (кэшбек - ${currentCashback()} с.)`;
   listItemEl.dataset.purchaseId = purchase.id;
-  listEl.appendChild(listItemEl);
+  const firstEl = listEl.children[0];
+  if (firstEl) {
+    listEl.insertBefore(listItemEl, firstEl);
+  } else {
+    listEl.appendChild(listItemEl);
+  }
+
   let reducedCashback = purchases
     .map((item) => {
       if (item.price <= minPrice) {
