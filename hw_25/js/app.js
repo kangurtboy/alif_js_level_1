@@ -35,7 +35,7 @@ errorEl.dataset.id = 'message';
 rootEl.appendChild(errorEl);
 const priceSymbol = 'с.';
 totalEl.textContent = 'нет покупок';
-const purchases = [];
+let purchases = [];
 
 let nextID = 1;
 
@@ -87,6 +87,24 @@ formEl.onsubmit = (e) => {
   }
   formEl.reset();
   nameInput.focus();
+};
+
+listEl.onclick = (e) => {
+  let currentItemEl = null;
+  let removeButton = null;
+  let removedId = null;
+  if (e.target.textContent === 'Удалить') {
+    removeButton = e.target;
+    currentItemEl = removeButton.parentElement;
+    currentItemEl.remove();
+    removedId = Number(currentItemEl.dataset.purchaseId);
+    purchases = purchases.filter((item) => item.id !== removedId);
+  }
+  const mostExensive = getExpencivePurchase(purchases);
+  totalEl.textContent = `${mostExensive.name} на сумму ${mostExensive.price} ${priceSymbol}`;
+  if (!listEl.children.length) {
+    totalEl.textContent = 'нет покупок';
+  }
 };
 
 function getExpencivePurchase(arr) {
