@@ -7,19 +7,21 @@ function ajax(method, url, headers, callbacks, body) {
     callbacks.onStart();
   }
 
-  if (headers.length) {
+  if (headers) {
     for (const item in headers) {
       xhr.setRequestHeader(item, headers[item]);
     }
   }
   xhr.onload = () => {
+    if (xhr.status < 200 || xhr.status > 299) {
+      if (callbacks.onError) {
+        callbacks.onError(xhr.statusText);
+      }
+      return;
+    }
     callbacks.onSuccess(xhr.responseText);
   };
-  xhr.onerror = () => {
-    if (callbacks.onError) {
-      callbacks.onError();
-    }
-  };
+
   xhr.onloadend = () => {
     callbacks.onFinish();
   };
