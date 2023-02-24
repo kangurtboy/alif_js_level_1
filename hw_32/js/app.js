@@ -4,10 +4,21 @@ let posts = [];
 
 const rootEl = document.getElementById('root');
 const loaderEL = document.createElement('div');
-
 loaderEL.dataset.id = 'loader';
 loaderEL.textContent = 'Данные загружаются';
+rootEl.appendChild(loaderEL);
 
+const errorEl = document.createElement('div');
+errorEl.dataset.id = 'message';
+rootEl.appendChild(errorEl);
+const error = {
+  show: (text) => {
+    errorEl.textContent = text;
+  },
+  hide: () => {
+    errorEl.textContent = '';
+  },
+};
 const loader = {
   show() {
     loaderEL.style.display = 'block';
@@ -26,11 +37,11 @@ formEl.innerHTML = `<fieldset data-id="post-fields">
 rootEl.appendChild(formEl);
 
 const inputs = rootEl.querySelectorAll('input');
-const errorEl = document.createElement('div');
-errorEl.dataset.id = 'message';
+
 const postsEl = document.createElement('div');
 postsEl.dataset.id = 'posts';
 rootEl.appendChild(postsEl);
+const fieldSetEl = rootEl.querySelector('[data-id="post-fields"]');
 
 function makePostEl(post) {
   const wrappEl = document.createElement('div');
@@ -58,13 +69,15 @@ function ajax(method, url, headers, callbacks, body) {
     callbacks.onStart();
   }
 
-  if (headers.length) {
+  if (headers) {
     for (const item in headers) {
       xhr.setRequestHeader(item, headers[item]);
     }
   }
   xhr.onload = () => {
-    callbacks.onSuccess(xhr.responseText);
+    if (callbacks.onSuccess) {
+      callbacks.onSuccess(xhr.responseText);
+    }
   };
   xhr.onerror = () => {
     if (callbacks.onError) {
@@ -91,17 +104,13 @@ function ajax(method, url, headers, callbacks, body) {
 // };
 
 function validation(nodes) {
-  const errorElement = rootEl.querySelector('[data-id=message]');
-  if (errorElement) {
-    errorElement.remove();
-  }
   for (const item of nodes) {
     if (!item.value) {
       item.focus();
-      errorEl.textContent = 'Поля не может быт пустым';
-      rootEl.appendChild(errorEl.cloneNode(true));
+      error.show('Поля не может быт пустым');
       return false;
     }
+    error.hide();
   }
   nodes[0].focus();
   return true;
@@ -125,25 +134,45 @@ formEl.onsubmit = (e) => {
   ajax(
     'POST',
     apiUrl,
-    { 'Content-Type': 'Aplication/json' },
+    { 'Content-Type': 'application/json' },
     {
-      onSuccess: (data) => {},
+      onStart: () => {
+        const postEl = makePostEl(post);
+        loader.show();
+        fieldSetEl.disabled = true;
+        if (postsEl.childElementCount) {
+          postsEl.insertBefore(postEl, postsEl.children[0]);
+        } else {
+          postsEl.appendChild(postEl);
+        }
+      },
+      onSuccess: (postData) => {
+        const lastPostEl = postsEl.children[0];
+        const loadedPost = JSON.parse(postData);
+        lastPostEl.dataset.postId = loadedPost.id;
+        posts.unshift(loadedPost);
+        loader.hide();
+        formEl.reset();
+        fieldSetEl.disabled = false;
+        authorEl.focus();
+      },
     },
     JSON.stringify(post)
   );
-  formEl.reset();
 };
-
-//получение постов
 
 ajax(
   'GET',
   apiUrl,
   {},
   {
+    onStart: () => {
+      loader.show;
+    },
     onSuccess: (postData) => {
       posts = JSON.parse(postData);
       makeWall(postsEl, posts);
+      loader.hide();
     },
   },
   {}
@@ -153,13 +182,24 @@ ajax(
 postsEl.onclick = (e) => {
   if (e.target.dataset.postAction === 'remove') {
     const currentPostEl = e.target.parentElement;
-    const postId = currentPostEl.dataset.postId;
+    const postId = Number(currentPostEl.dataset.postId);
     currentPostEl.remove();
     ajax(
       'DELETE',
       `${apiUrl}/${postId}`,
       { 'Content-Type': 'Aplication/json' },
-      {},
+      {
+        onStart: () => {
+          loader.show();
+          posts = posts.filter((item) => item.id !== postId);
+        },
+        onSuccess: () => {
+          loader.hide();
+        },
+        onFinish: () => {
+          loader.hide();
+        },
+      },
       null
     );
   }
